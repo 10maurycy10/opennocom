@@ -20,7 +20,7 @@ class NocomClientProtocol(auth.AuthClientProtocol):
     # Log all packets sent by server
     seq = 0
     control = None
-    packets_per_tick = 5
+    packets_per_tick = 20
     def packet_unhandled(self, buff, name):
         """
         Ignore unhandled packets.
@@ -38,7 +38,7 @@ class NocomClientProtocol(auth.AuthClientProtocol):
         Dummy next function, you should overide this
         """
         return None
-    def update(x, y, z, block):
+    def update(self, x, y, z, block):
         """
         Dummy on_update function. you should override this
         """
@@ -54,6 +54,7 @@ class NocomClientProtocol(auth.AuthClientProtocol):
         """
         Sends a player digging packet with given (block) cordinates.
         """
+        #print(x,y,z)
         self.send_packet(
                 "player_digging", 
                 self.buff_type.pack_varint(2), # start digging
@@ -73,7 +74,7 @@ class NocomControler:
     controler = None
     def should_exit(self) -> bool:
         pass
-    def next_location(self) -> None|[int]:
+    def next_location(self) -> [int]:
         pass
     def on_update(self, x: int, y:int, z:int, block: int):
         pass
@@ -88,5 +89,5 @@ class ControledNocomClientProtocol(NocomClientProtocol):
         if self.controler.should_exit():
             self.close() 
         return self.controler.next_location()
-    def on_update(self,x,y,z,block):
+    def update(self,x,y,z,block):
         self.controler.on_update(x,y,z,block)
