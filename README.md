@@ -4,8 +4,8 @@ Find players using the nocom (no comment) exploit.
 
 ## Exploit explanation
 
-Nocom exploits a (patch in paper)[https://github.com/PaperMC/Paper/blob/ver/1.12.2/Spigot-Server-Patches/0196-Fix-block-break-desync.patch
-], an optimized version of the minecraft server.
+Nocom exploits a [patch in paper](https://github.com/PaperMC/Paper/blob/ver/1.12.2/Spigot-Server-Patches/0196-Fix-block-break-desync.patch
+), an optimized version of the minecraft server.
 
 The patched server sends a BlockChange packet in response to a PlayerDigging packed, **if** the coordinates in the PlayerDigging packet is in a loaded chunk.
 
