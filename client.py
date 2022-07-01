@@ -12,7 +12,7 @@ import random
 import logging
 from twisted.protocols.basic import LineReceiver
 
-class NocomClientProtocol(auth.AuthClientProtocol):
+class NocomClientProtocol(SpawningClientProtocol):
     """
     A minecraft client build on quarry that can send nocom packets.
     You probobly want to subclass this.
@@ -62,6 +62,7 @@ class NocomClientProtocol(auth.AuthClientProtocol):
                 self.buff_type.pack("b",1), # face -Y
                 #self.buff_type.pack_varint(self.seq) # sequence number
         )
+        
         self.seq += 1
         #logging.info(f"breaking ({x}, {y}, {z})")
     def setup(self):
@@ -78,6 +79,9 @@ class NocomControler:
         pass
     def on_update(self, x: int, y:int, z:int, block: int):
         pass
+    def on_exit(self):
+        pass
+
 
 class ControledNocomClientProtocol(NocomClientProtocol):
     """
@@ -85,9 +89,12 @@ class ControledNocomClientProtocol(NocomClientProtocol):
 
     You should set the .controler property with the factory
     """
+    def on_close(self):
+        self.controler.on_exit()
     def get_next(self):
         if self.controler.should_exit():
-            self.close() 
+            self.close()
+            self.controler.on_exit()
         return self.controler.next_location()
     def update(self,x,y,z,block):
         self.controler.on_update(x,y,z,block)

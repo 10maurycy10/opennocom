@@ -10,17 +10,20 @@ import logging
 from twisted.internet import reactor,defer,stdio
 import numpy
 from PIL import Image
+from twisted.internet.defer import setDebugging
+setDebugging(True)
 
 class ScanLineSpec():
     """
     Container for confguration of scanlines
     """
-    resolution = 16*2
-    def __init__(self, sx: int, sz: int, ex: int, ez: int):
+    def __init__(self, sx: int, sz: int, ex: int, ez: int, res: int, outfile):
+        self.outfile = outfile
         self.sx = sx
         self.sz = sz
         self.ex = ex
         self.ez = ez
+        self.resolution = res
 
 class ScanLineControler(client.NocomControler):
     """
@@ -28,6 +31,7 @@ class ScanLineControler(client.NocomControler):
     """
     exhasted = False
     done_receving = False
+    should_stop = True
     x = 0
     z = 0
     def __init__(self, spec):
@@ -37,7 +41,11 @@ class ScanLineControler(client.NocomControler):
         self.x = spec.sx
         self.z = spec.sz
     def should_exit(self):
-        self.done_receving
+        return self.done_receving
+    def on_exit(self):
+        if self.should_stop:
+            reactor.stop()
+            self.should_stop = False
     def next_location(self):
         res = self.spec.resolution
         if self.exhasted: # if search space is finished, return nothing
@@ -48,7 +56,9 @@ class ScanLineControler(client.NocomControler):
             print(f"Scanning z={self.z*res}. [{self.z}]")
             if self.z >= self.spec.ez: # If done on the z axis, stop scanning
                 self.exhasted = True
-                Image.fromarray(self.buffer, "L").save("out_new.png")
+                self.done_receving = True
+                Image.fromarray(self.buffer, "L").save(self.spec.outfile)
+                print("Saving out, the program should now exit")
                 return None
             self.z += 1
         else:
@@ -71,23 +81,41 @@ class ScanLineFactory(ClientFactory):
         nocom.controler = controler
         return nocom
 
-config = json.loads(open("config.json").read())
+def errback(e):
+    print("error - more info should follow")
+    print(e)
+    reactor.crash()
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description='Use the nocom exploit to find loaded chunks')
+    parser.add_argument('--token',metavar='token',type=str,help='Your minecraft token. go to https://kqzz.github.io/mc-bearer-token/ for instructions on how to get it. (lasts for 24h)', required=True)
+    parser.add_argument('--resolution', type=int, help="How densly to check blocks. 128-256 is a good value, going under 16 is entirly pointless.", default=128)
+    parser.add_argument('--outfile', type=str, help="file to save the result to", default="out.png")
+    parser.add_argument('--port', type=int, help="Target server port", default=25565)
+    parser.add_argument('host', type=str, help="Target server hostname")
+    parser.add_argument('sx', type=int, help="Starting x cordinate (in terms of --resolution)", default=-30)
+    parser.add_argument('sz', type=int, help="Starting z cordinate (in terms of --resolution)", default=-30)
+    parser.add_argument('ex', type=int, help="End x cordinate (in terms of --resolution)", default=30)
+    parser.add_argument('ez', type=int, help="End z cordinate (in terms of --resolution)", default=30)
+    args = parser.parse_args()
+
+    defer = twisted_main(args.token, args.sx, args.sz, args.ex, args.ez, args.resolution, args.host, args.port, args.outfile)
+    defer.addErrback(errback)
+
+    reactor.run()
 
 @defer.inlineCallbacks
-def main(args):
+def twisted_main(token, sx, sz, ex, ez, res, server, port, outfile):
     print("logging in...")
-    profile = yield auth.make_profile(config["minecraft-token"])
-    print("makeing instance")
-    factory = ScanLineFactory(profile, ScanLineSpec(-30, -30, 30, 30))
-    print("connecting")
-    factory.connect('85.159.210.228', 25565)
-    #factory.connect('localhost', 25565)
-    print("connected")
+    profile = yield auth.make_profile(token)
+    print("initalizing...")
+    factory = ScanLineFactory(profile, ScanLineSpec(sx, sz, ex, ez, res, outfile))
+    print("connecting...")
+    factory.connect(server, port)
 
 if __name__ == "__main__":
-    import sys
     logging.basicConfig(level=logging.DEBUG)
-    main(sys.argv[1:])
-    reactor.run()
+    main()
 
 
