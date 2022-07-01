@@ -1,3 +1,4 @@
+#!/bin/sh
 """
 A very simple search pattern for nocom
 """
