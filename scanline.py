@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/python
 """
 A very simple search pattern for nocom
 """
